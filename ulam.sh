@@ -9,4 +9,5 @@ if [[ ! -x "$PY" ]]; then
     echo "error: $PY not found. Run: uv venv .venv && uv pip install --python .venv/bin/python pantograph" >&2
     exit 1
 fi
+export PYTHONPATH="$DIR${PYTHONPATH:+:$PYTHONPATH}"
 exec "$PY" -m ulam "$@"
