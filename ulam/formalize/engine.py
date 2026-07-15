@@ -25,6 +25,55 @@ class FormalizationEngine:
         self._llm = llm
 
     def run(self) -> FormalizationResult:
+        """Run formalization and persist resumable/debuggable run artifacts.
+
+        Wraps _run() rather than instrumenting every internal return site, so
+        summary.json/events.jsonl stay consistent even as _run()'s internal
+        control flow changes.
+        """
+        _append_event(self._pending_artifact_dir(), {"phase": "run_start"})
+        try:
+            result = self._run(_on_round=self._emit_round_event)
+        except Exception as exc:
+            artifact_dir = self._pending_artifact_dir()
+            _append_event(artifact_dir, {"phase": "run_error", "error": str(exc)})
+            if artifact_dir is not None:
+                _write_summary(artifact_dir, {"ok": False, "error": str(exc)})
+            raise
+        artifact_dir = result.artifact_dir
+        _append_event(
+            artifact_dir,
+            {
+                "phase": "run_end",
+                "typecheck_ok": result.typecheck_ok,
+                "solved": result.solved,
+                "remaining_sorries": result.remaining_sorries,
+                "rounds": result.rounds,
+                "error": result.error,
+            },
+        )
+        _write_summary(
+            artifact_dir,
+            {
+                "ok": result.typecheck_ok and not result.error,
+                "output_path": str(result.output_path),
+                "rounds": result.rounds,
+                "typecheck_ok": result.typecheck_ok,
+                "solved": result.solved,
+                "remaining_sorries": result.remaining_sorries,
+                "error": result.error,
+            },
+        )
+        return result
+
+    def _pending_artifact_dir(self) -> Optional[Path]:
+        """Best-effort artifact dir for events logged before _run() computes one (e.g. on early crash)."""
+        return self._config.artifact_dir
+
+    def _emit_round_event(self, artifact_dir: Path, round_idx: int, **fields) -> None:
+        _append_event(artifact_dir, {"phase": "round", "round": round_idx, **fields})
+
+    def _run(self, _on_round=None) -> FormalizationResult:
         tex = self._config.tex_path.read_text(encoding="utf-8", errors="ignore")
         context = _read_context(self._config.context_files)
         segments = attach_proofs(segment_tex(tex))
@@ -77,6 +126,8 @@ class FormalizationEngine:
             _log_decl_progress(self._config, lean_code)
             round_idx = round_offset + rounds
             round_dir = _ensure_round_dir(artifact_dir, round_idx)
+            if _on_round is not None:
+                _on_round(artifact_dir, round_idx, sorries=_count_sorries(lean_code))
             _persist_rejection_memory(artifact_dir, round_dir, rejection_memory)
             _write_artifact(round_dir / "start.lean", lean_code)
             self._write_output(lean_code)
@@ -1645,6 +1696,34 @@ def _load_global_config() -> dict:
     from ..config import load_config
 
     return load_config()
+
+
+def _events_path(artifact_dir: Path) -> Path:
+    return artifact_dir / "events.jsonl"
+
+
+def _summary_path(artifact_dir: Path) -> Path:
+    return artifact_dir / "summary.json"
+
+
+def _append_event(artifact_dir: Optional[Path], event: dict) -> None:
+    if artifact_dir is None:
+        return
+    payload = dict(event)
+    payload["ts"] = dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    with _events_path(artifact_dir).open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, ensure_ascii=True) + "\n")
+
+
+def _write_summary(artifact_dir: Optional[Path], summary: dict) -> None:
+    if artifact_dir is None:
+        return
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    _summary_path(artifact_dir).write_text(
+        json.dumps(summary, indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _prepare_artifacts(
