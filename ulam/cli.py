@@ -2887,6 +2887,101 @@ def _normalize_proof_profile(value: object) -> str:
     return "balanced"
 
 
+def _resolve_bool_setting(
+    args: argparse.Namespace,
+    attr: str,
+    section: str,
+    key: str,
+    default: bool,
+    config: dict | None = None,
+) -> bool:
+    """Generic `_resolve_*` primitive: explicit CLI flag wins, else config[section][key], else default."""
+    explicit = getattr(args, attr, None)
+    if explicit is not None:
+        return bool(explicit)
+    cfg = config if config is not None else load_config()
+    return bool(cfg.get(section, {}).get(key, default))
+
+
+def _resolve_int_setting(
+    args: argparse.Namespace,
+    attr: str,
+    section: str,
+    key: str,
+    default: int,
+    config: dict | None = None,
+    minimum: int | None = None,
+    maximum: int | None = None,
+) -> int:
+    """Generic `_resolve_*` primitive for clamped integer settings."""
+
+    def _clamp(value: int) -> int:
+        if minimum is not None:
+            value = max(minimum, value)
+        if maximum is not None:
+            value = min(maximum, value)
+        return value
+
+    explicit = getattr(args, attr, None)
+    if explicit is not None:
+        try:
+            return _clamp(int(explicit))
+        except Exception:
+            return _clamp(default)
+    cfg = config if config is not None else load_config()
+    raw = cfg.get(section, {}).get(key, default)
+    try:
+        return _clamp(int(raw))
+    except Exception:
+        return _clamp(default)
+
+
+def _resolve_float_setting(
+    args: argparse.Namespace,
+    attr: str,
+    section: str,
+    key: str,
+    default: float,
+    config: dict | None = None,
+    minimum: float | None = None,
+) -> float:
+    """Generic `_resolve_*` primitive for clamped float settings."""
+
+    def _clamp(value: float) -> float:
+        return max(minimum, value) if minimum is not None else value
+
+    explicit = getattr(args, attr, None)
+    if explicit is not None:
+        try:
+            return _clamp(float(explicit))
+        except Exception:
+            return _clamp(default)
+    cfg = config if config is not None else load_config()
+    raw = cfg.get(section, {}).get(key, default)
+    try:
+        return _clamp(float(raw))
+    except Exception:
+        return _clamp(default)
+
+
+def _resolve_enum_setting(
+    args: argparse.Namespace,
+    attr: str,
+    section: str,
+    key: str,
+    choices: set[str],
+    default: str,
+    config: dict | None = None,
+) -> str:
+    """Generic `_resolve_*` primitive for lowercase-enum settings."""
+    explicit = str(getattr(args, attr, "") or "").strip().lower()
+    if explicit in choices:
+        return explicit
+    cfg = config if config is not None else load_config()
+    raw = str(cfg.get(section, {}).get(key, default)).strip().lower()
+    return raw if raw in choices else default
+
+
 def _resolve_proof_profile(args: argparse.Namespace, config: dict | None = None) -> str:
     explicit_raw = str(getattr(args, "proof_profile", "") or "").strip()
     if explicit_raw:
@@ -2984,148 +3079,72 @@ def _apply_proof_profile_to_args(args: argparse.Namespace, profile: str) -> None
 
 
 def _resolve_allow_axioms(args: argparse.Namespace, config: dict | None = None) -> bool:
-    explicit = getattr(args, "allow_axioms", None)
-    if explicit is not None:
-        return bool(explicit)
-    cfg = config if config is not None else load_config()
-    return bool(cfg.get("prove", {}).get("allow_axioms", True))
+    return _resolve_bool_setting(args, "allow_axioms", "prove", "allow_axioms", True, config)
 
 
 def _resolve_typecheck_timeout(args: argparse.Namespace, config: dict | None = None) -> float:
-    explicit = getattr(args, "typecheck_timeout", None)
-    if explicit is not None:
-        try:
-            return max(5.0, float(explicit))
-        except Exception:
-            return 60.0
-    cfg = config if config is not None else load_config()
-    raw = cfg.get("prove", {}).get("typecheck_timeout_s", 60)
-    try:
-        return max(5.0, float(raw))
-    except Exception:
-        return 60.0
+    return _resolve_float_setting(
+        args, "typecheck_timeout", "prove", "typecheck_timeout_s", 60.0, config, minimum=5.0
+    )
 
 
 def _resolve_llm_allow_helper_lemmas(
     args: argparse.Namespace,
     config: dict | None = None,
 ) -> bool:
-    explicit = getattr(args, "llm_allow_helper_lemmas", None)
-    if explicit is not None:
-        return bool(explicit)
-    cfg = config if config is not None else load_config()
-    return bool(cfg.get("prove", {}).get("llm_allow_helper_lemmas", True))
+    return _resolve_bool_setting(
+        args, "llm_allow_helper_lemmas", "prove", "llm_allow_helper_lemmas", True, config
+    )
 
 
 def _resolve_llm_edit_scope(
     args: argparse.Namespace,
     config: dict | None = None,
 ) -> str:
-    explicit = str(getattr(args, "llm_edit_scope", "") or "").strip().lower()
-    if explicit in {"full", "errors_only"}:
-        return explicit
-    cfg = config if config is not None else load_config()
-    raw = str(cfg.get("prove", {}).get("llm_edit_scope", "full")).strip().lower()
-    if raw in {"full", "errors_only"}:
-        return raw
-    return "full"
+    return _resolve_enum_setting(
+        args, "llm_edit_scope", "prove", "llm_edit_scope", {"full", "errors_only"}, "full", config
+    )
 
 
 def _resolve_llm_cycle_patience(
     args: argparse.Namespace,
     config: dict | None = None,
 ) -> int:
-    explicit = getattr(args, "llm_cycle_patience", None)
-    if explicit is not None:
-        try:
-            return max(1, int(explicit))
-        except Exception:
-            return 2
-    cfg = config if config is not None else load_config()
-    raw = cfg.get("prove", {}).get("llm_cycle_patience", 2)
-    try:
-        return max(1, int(raw))
-    except Exception:
-        return 2
+    return _resolve_int_setting(
+        args, "llm_cycle_patience", "prove", "llm_cycle_patience", 2, config, minimum=1
+    )
 
 
 def _resolve_prove_output_format(args: argparse.Namespace, config: dict | None = None) -> str:
-    explicit = str(getattr(args, "output_format", "") or "").strip().lower()
-    if explicit in {"lean", "tex"}:
-        return explicit
-    cfg = config if config is not None else load_config()
-    raw = str(cfg.get("prove", {}).get("output_format", "lean")).strip().lower()
-    if raw in {"lean", "tex"}:
-        return raw
-    return "lean"
+    return _resolve_enum_setting(
+        args, "output_format", "prove", "output_format", {"lean", "tex"}, "lean", config
+    )
 
 
 def _resolve_tex_rounds(args: argparse.Namespace, config: dict | None = None) -> int:
-    explicit = getattr(args, "tex_rounds", None)
-    if explicit is not None:
-        try:
-            return max(1, int(explicit))
-        except Exception:
-            return 3
-    cfg = config if config is not None else load_config()
-    raw = cfg.get("prove", {}).get("tex_rounds", 3)
-    try:
-        return max(1, int(raw))
-    except Exception:
-        return 3
+    return _resolve_int_setting(args, "tex_rounds", "prove", "tex_rounds", 3, config, minimum=1)
 
 
 def _resolve_tex_judge_repairs(args: argparse.Namespace, config: dict | None = None) -> int:
-    explicit = getattr(args, "tex_judge_repairs", None)
-    if explicit is not None:
-        try:
-            return max(0, int(explicit))
-        except Exception:
-            return 2
-    cfg = config if config is not None else load_config()
-    raw = cfg.get("prove", {}).get("tex_judge_repairs", 2)
-    try:
-        return max(0, int(raw))
-    except Exception:
-        return 2
+    return _resolve_int_setting(
+        args, "tex_judge_repairs", "prove", "tex_judge_repairs", 2, config, minimum=0
+    )
 
 
 def _resolve_tex_worker_drafts(args: argparse.Namespace, config: dict | None = None) -> int:
-    explicit = getattr(args, "tex_worker_drafts", None)
-    if explicit is not None:
-        try:
-            return max(1, int(explicit))
-        except Exception:
-            return 2
-    cfg = config if config is not None else load_config()
-    raw = cfg.get("prove", {}).get("tex_worker_drafts", 2)
-    try:
-        return max(1, int(raw))
-    except Exception:
-        return 2
+    return _resolve_int_setting(
+        args, "tex_worker_drafts", "prove", "tex_worker_drafts", 2, config, minimum=1
+    )
 
 
 def _resolve_tex_concurrency(args: argparse.Namespace, config: dict | None = None) -> bool:
-    explicit = getattr(args, "tex_concurrency", None)
-    if explicit is not None:
-        return bool(explicit)
-    cfg = config if config is not None else load_config()
-    return bool(cfg.get("prove", {}).get("tex_concurrency", False))
+    return _resolve_bool_setting(args, "tex_concurrency", "prove", "tex_concurrency", False, config)
 
 
 def _resolve_tex_replan_passes(args: argparse.Namespace, config: dict | None = None) -> int:
-    explicit = getattr(args, "tex_replan_passes", None)
-    if explicit is not None:
-        try:
-            return max(1, int(explicit))
-        except Exception:
-            return 2
-    cfg = config if config is not None else load_config()
-    raw = cfg.get("prove", {}).get("tex_replan_passes", 2)
-    try:
-        return max(1, int(raw))
-    except Exception:
-        return 2
+    return _resolve_int_setting(
+        args, "tex_replan_passes", "prove", "tex_replan_passes", 2, config, minimum=1
+    )
 
 
 def _resolve_tex_action_steps(args: argparse.Namespace, config: dict | None = None) -> int:
@@ -5566,18 +5585,9 @@ def _strip_md_fences(text: str) -> str:
 
 
 def _resolve_formalize_max_rounds(args: argparse.Namespace, config: dict | None = None) -> int:
-    explicit = getattr(args, "max_rounds", None)
-    if explicit is not None:
-        try:
-            return max(1, int(explicit))
-        except Exception:
-            return 5
-    cfg = config if config is not None else load_config()
-    raw = cfg.get("formalize", {}).get("max_rounds", 5)
-    try:
-        return max(1, int(raw))
-    except Exception:
-        return 5
+    return _resolve_int_setting(
+        args, "max_rounds", "formalize", "max_rounds", 5, config, minimum=1
+    )
 
 
 def _resolve_formalize_max_repairs(
@@ -5602,84 +5612,39 @@ def _resolve_formalize_max_repairs(
 
 
 def _resolve_formalize_max_proof_rounds(args: argparse.Namespace, config: dict | None = None) -> int:
-    explicit = getattr(args, "max_proof_rounds", None)
-    if explicit is not None:
-        try:
-            return max(1, int(explicit))
-        except Exception:
-            return 1
-    cfg = config if config is not None else load_config()
-    raw = cfg.get("formalize", {}).get("max_proof_rounds", 1)
-    try:
-        return max(1, int(raw))
-    except Exception:
-        return 1
+    return _resolve_int_setting(
+        args, "max_proof_rounds", "formalize", "max_proof_rounds", 1, config, minimum=1
+    )
 
 
 def _resolve_formalize_proof_repair(args: argparse.Namespace, config: dict | None = None) -> int:
-    explicit = getattr(args, "proof_repair", None)
-    if explicit is not None:
-        try:
-            return max(0, int(explicit))
-        except Exception:
-            return 2
-    cfg = config if config is not None else load_config()
-    raw = cfg.get("formalize", {}).get("proof_repair", 2)
-    try:
-        return max(0, int(raw))
-    except Exception:
-        return 2
+    return _resolve_int_setting(
+        args, "proof_repair", "formalize", "proof_repair", 2, config, minimum=0
+    )
 
 
 def _resolve_formalize_typecheck_timeout(
     args: argparse.Namespace, config: dict | None = None
 ) -> float:
-    explicit = getattr(args, "typecheck_timeout", None)
-    if explicit is not None:
-        try:
-            return max(5.0, float(explicit))
-        except Exception:
-            return 60.0
-    cfg = config if config is not None else load_config()
-    raw = cfg.get("formalize", {}).get("typecheck_timeout_s", 60)
-    try:
-        return max(5.0, float(raw))
-    except Exception:
-        return 60.0
+    return _resolve_float_setting(
+        args, "typecheck_timeout", "formalize", "typecheck_timeout_s", 60.0, config, minimum=5.0
+    )
 
 
 def _resolve_formalize_llm_check(args: argparse.Namespace, config: dict | None = None) -> bool:
-    explicit = getattr(args, "llm_check", None)
-    if explicit is not None:
-        return bool(explicit)
-    cfg = config if config is not None else load_config()
-    return bool(cfg.get("formalize", {}).get("llm_check", True))
+    return _resolve_bool_setting(args, "llm_check", "formalize", "llm_check", True, config)
 
 
 def _resolve_formalize_llm_check_timing(args: argparse.Namespace, config: dict | None = None) -> str:
-    explicit = str(getattr(args, "llm_check_timing", "") or "").strip().lower()
-    if explicit in {"end", "mid+end"}:
-        return explicit
-    cfg = config if config is not None else load_config()
-    raw = str(cfg.get("formalize", {}).get("llm_check_timing", "end")).strip().lower()
-    if raw in {"end", "mid+end"}:
-        return raw
-    return "end"
+    return _resolve_enum_setting(
+        args, "llm_check_timing", "formalize", "llm_check_timing", {"end", "mid+end"}, "end", config
+    )
 
 
 def _resolve_formalize_llm_check_repairs(args: argparse.Namespace, config: dict | None = None) -> int:
-    explicit = getattr(args, "llm_check_repairs", None)
-    if explicit is not None:
-        try:
-            return max(0, int(explicit))
-        except Exception:
-            return 2
-    cfg = config if config is not None else load_config()
-    raw = cfg.get("formalize", {}).get("llm_check_repairs", 2)
-    try:
-        return max(0, int(raw))
-    except Exception:
-        return 2
+    return _resolve_int_setting(
+        args, "llm_check_repairs", "formalize", "llm_check_repairs", 2, config, minimum=0
+    )
 
 
 def run_replay(args: argparse.Namespace) -> None:

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Iterable
 
 from .base import LLMClient
+from .http import ensure_cmd
 from .prompt import build_prompt, parse_tactics
 from .cli_utils import claude_print
 from ..types import ProofState
@@ -18,7 +19,7 @@ class ClaudeCLIClient(LLMClient):
         self._model = model
         self._timeout_s = timeout_s
         self._heartbeat_s = heartbeat_s
-        _ensure_cmd("claude")
+        ensure_cmd("claude")
 
     def propose(
         self,
@@ -40,10 +41,3 @@ class ClaudeCLIClient(LLMClient):
             heartbeat_s=self._heartbeat_s,
         )
         return parse_tactics(text, k)
-
-
-def _ensure_cmd(cmd: str) -> None:
-    from shutil import which
-
-    if which(cmd) is None:
-        raise RuntimeError(f"{cmd} CLI not found on PATH")

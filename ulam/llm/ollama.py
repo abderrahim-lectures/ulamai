@@ -6,6 +6,7 @@ import urllib.request
 from typing import Iterable
 
 from .base import LLMClient
+from .http import extract_ollama_content, ollama_chat_endpoints, urlopen_read
 from .prompt import build_prompt, parse_tactics
 from .runtime import run_with_runtime_controls
 from ..types import ProofState
@@ -45,17 +46,7 @@ class OllamaClient(LLMClient):
             "stream": False,
         }
         data = json.dumps(payload).encode("utf-8")
-        endpoints: list[str] = []
-        base_url = self._base_url
-        if base_url.endswith("/api"):
-            base_url = base_url[: -len("/api")]
-        if base_url.endswith("/v1"):
-            base_url = base_url[: -len("/v1")]
-            endpoints.append(f"{base_url}/v1/chat/completions")
-        endpoints.append(f"{base_url}/api/chat")
-        endpoints.append(f"{base_url}/v1/chat/completions")
-        seen = set()
-        endpoints = [url for url in endpoints if not (url in seen or seen.add(url))]
+        endpoints = ollama_chat_endpoints(self._base_url)
         last_error: Exception | None = None
         for url in endpoints:
             req = urllib.request.Request(
@@ -65,11 +56,13 @@ class OllamaClient(LLMClient):
             )
             try:
                 raw = run_with_runtime_controls(
-                    lambda req=req: _urlopen_read(req, self._timeout_s),
+                    lambda req=req: urlopen_read(req, self._timeout_s),
                     timeout_s=self._timeout_s,
                     heartbeat_s=self._heartbeat_s,
                 )
-                content = _extract_content(raw)
+                content = extract_ollama_content(raw)
+                if not content:
+                    raise RuntimeError("Ollama response missing content")
                 return parse_tactics(content, k)
             except urllib.error.HTTPError as exc:
                 last_error = exc
@@ -79,26 +72,3 @@ class OllamaClient(LLMClient):
         if last_error:
             raise last_error
         raise RuntimeError("Ollama response missing content")
-
-
-def _extract_content(raw: str) -> str:
-    data = json.loads(raw)
-    message = data.get("message")
-    if isinstance(message, dict) and "content" in message:
-        return message["content"]
-    choices = data.get("choices") or []
-    if choices:
-        choice = choices[0]
-        if "message" in choice and "content" in choice["message"]:
-            return choice["message"]["content"]
-        if "text" in choice:
-            return choice["text"]
-    if "response" in data and isinstance(data["response"], str):
-        return data["response"]
-    raise RuntimeError("Ollama response missing content")
-
-
-def _urlopen_read(req: urllib.request.Request, timeout_s: float | None) -> str:
-    timeout = timeout_s if timeout_s and timeout_s > 0 else None
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read().decode("utf-8")

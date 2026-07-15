@@ -7,6 +7,13 @@ import urllib.error
 import urllib.request
 from typing import Iterable
 
+from ..llm.http import (
+    extract_anthropic_content,
+    extract_ollama_content,
+    extract_openai_content,
+    ollama_chat_endpoints,
+    urlopen_read,
+)
 from ..llm.runtime import run_with_runtime_controls
 
 
@@ -1272,11 +1279,11 @@ def _call_openai(config: dict, prompt: str) -> str:
     )
     timeout_s, heartbeat_s = _llm_runtime_settings(config)
     raw = run_with_runtime_controls(
-        lambda: _urlopen_read(req, timeout_s),
+        lambda: urlopen_read(req, timeout_s),
         timeout_s=timeout_s,
         heartbeat_s=heartbeat_s,
     )
-    return _extract_openai(raw)
+    return extract_openai_content(raw)
 
 
 def _call_ollama(config: dict, prompt: str) -> str:
@@ -1292,16 +1299,7 @@ def _call_ollama(config: dict, prompt: str) -> str:
         "stream": False,
     }
     data = json.dumps(payload).encode("utf-8")
-    endpoints: list[str] = []
-    if base_url.endswith("/api"):
-        base_url = base_url[: -len("/api")]
-    if base_url.endswith("/v1"):
-        base_url = base_url[: -len("/v1")]
-        endpoints.append(f"{base_url}/v1/chat/completions")
-    endpoints.append(f"{base_url}/api/chat")
-    endpoints.append(f"{base_url}/v1/chat/completions")
-    seen = set()
-    endpoints = [url for url in endpoints if not (url in seen or seen.add(url))]
+    endpoints = ollama_chat_endpoints(base_url)
     last_error: Exception | None = None
     timeout_s, heartbeat_s = _llm_runtime_settings(config)
     for url in endpoints:
@@ -1312,11 +1310,11 @@ def _call_ollama(config: dict, prompt: str) -> str:
         )
         try:
             raw = run_with_runtime_controls(
-                lambda req=req: _urlopen_read(req, timeout_s),
+                lambda req=req: urlopen_read(req, timeout_s),
                 timeout_s=timeout_s,
                 heartbeat_s=heartbeat_s,
             )
-            return _extract_ollama(raw)
+            return extract_ollama_content(raw)
         except urllib.error.HTTPError as exc:
             last_error = exc
             if exc.code in (404, 405):
@@ -1355,11 +1353,11 @@ def _call_anthropic(config: dict, prompt: str) -> str:
     )
     timeout_s, heartbeat_s = _llm_runtime_settings(config)
     raw = run_with_runtime_controls(
-        lambda: _urlopen_read(req, timeout_s),
+        lambda: urlopen_read(req, timeout_s),
         timeout_s=timeout_s,
         heartbeat_s=heartbeat_s,
     )
-    return _extract_anthropic(raw)
+    return extract_anthropic_content(raw)
 
 
 def _call_gemini(config: dict, prompt: str) -> str:
@@ -1393,11 +1391,11 @@ def _call_gemini(config: dict, prompt: str) -> str:
     )
     timeout_s, heartbeat_s = _llm_runtime_settings(config)
     raw = run_with_runtime_controls(
-        lambda: _urlopen_read(req, timeout_s),
+        lambda: urlopen_read(req, timeout_s),
         timeout_s=timeout_s,
         heartbeat_s=heartbeat_s,
     )
-    return _extract_openai(raw)
+    return extract_openai_content(raw)
 
 
 def _llm_runtime_settings(config: dict) -> tuple[float | None, float | None]:
@@ -1415,54 +1413,6 @@ def _llm_runtime_settings(config: dict) -> tuple[float | None, float | None]:
     timeout_s: float | None = timeout if timeout > 0 else None
     heartbeat_s: float | None = heartbeat if heartbeat > 0 else None
     return timeout_s, heartbeat_s
-
-
-def _urlopen_read(req: urllib.request.Request, timeout_s: float | None) -> str:
-    timeout = timeout_s if timeout_s and timeout_s > 0 else None
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read().decode("utf-8")
-
-
-def _extract_openai(raw: str) -> str:
-    data = json.loads(raw)
-    choices = data.get("choices") or []
-    if not choices:
-        return ""
-    msg = choices[0]
-    if "message" in msg and "content" in msg["message"]:
-        return msg["message"]["content"]
-    if "text" in msg:
-        return msg["text"]
-    return ""
-
-
-def _extract_ollama(raw: str) -> str:
-    data = json.loads(raw)
-    message = data.get("message")
-    if isinstance(message, dict) and "content" in message:
-        return message["content"]
-    choices = data.get("choices") or []
-    if choices:
-        choice = choices[0]
-        if "message" in choice and "content" in choice["message"]:
-            return choice["message"]["content"]
-        if "text" in choice:
-            return choice["text"]
-    if "response" in data and isinstance(data["response"], str):
-        return data["response"]
-    return ""
-
-
-def _extract_anthropic(raw: str) -> str:
-    data = json.loads(raw)
-    content = data.get("content")
-    if isinstance(content, list):
-        parts = []
-        for item in content:
-            if isinstance(item, dict) and item.get("type") == "text":
-                parts.append(item.get("text", ""))
-        return "\n".join(parts)
-    return data.get("text", "") if isinstance(data.get("text", ""), str) else ""
 
 
 def _call_codex_cli(config: dict, prompt: str) -> str:
