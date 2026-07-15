@@ -536,6 +536,14 @@ pip install git+https://github.com/stanford-centaur/PyPantograph
 
 Then set `ULAM_LEAN_PROJECT` or configure the Lean project path in the menu.
 
+Using Gemini: `ulam` calls the official `google-genai` SDK (not raw HTTP),
+which gives proper retry/backoff on transient errors (e.g. `503`
+"high demand" responses). Install it if you use `gemini`/`gemini_cli`:
+
+```bash
+pip install google-genai
+```
+
 ---
 
 ## LLM Configuration

@@ -7,6 +7,7 @@ import urllib.error
 import urllib.request
 from typing import Iterable
 
+from ..llm.gemini_client import call_gemini
 from ..llm.http import (
     extract_anthropic_content,
     extract_ollama_content,
@@ -1369,33 +1370,20 @@ def _call_gemini(config: dict, prompt: str) -> str:
     )
     if not api_key:
         return ""
-    base_url = gemini.get("base_url", "https://generativelanguage.googleapis.com/v1beta/openai").rstrip("/")
     model = gemini.get("model", "gemini-3.1-pro-preview")
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": "You are a Lean 4 formalization assistant."},
-            {"role": "user", "content": prompt},
-        ],
-        "temperature": 0.2,
-        "max_tokens": 3000,
-    }
-    data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        _gemini_chat_endpoint(base_url),
-        data=data,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        },
-    )
     timeout_s, heartbeat_s = _llm_runtime_settings(config)
-    raw = run_with_runtime_controls(
-        lambda: urlopen_read(req, timeout_s),
+    return run_with_runtime_controls(
+        lambda: call_gemini(
+            api_key,
+            model,
+            "You are a Lean 4 formalization assistant.",
+            prompt,
+            temperature=0.2,
+            max_output_tokens=3000,
+        ),
         timeout_s=timeout_s,
         heartbeat_s=heartbeat_s,
     )
-    return extract_openai_content(raw)
 
 
 def _llm_runtime_settings(config: dict) -> tuple[float | None, float | None]:
@@ -1467,15 +1455,6 @@ def _call_gemini_cli(config: dict, prompt: str) -> str:
         timeout_s=timeout_s,
         heartbeat_s=heartbeat_s,
     )
-
-
-def _gemini_chat_endpoint(base_url: str) -> str:
-    base = base_url.rstrip("/")
-    if base.endswith("/chat/completions"):
-        return base
-    if base.endswith("/openai") or base.endswith("/openai/v1") or base.endswith("/v1"):
-        return f"{base}/chat/completions"
-    return f"{base}/v1/chat/completions"
 
 
 def _parse_equivalence(raw: str) -> dict:
