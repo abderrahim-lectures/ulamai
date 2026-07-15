@@ -1,0 +1,18 @@
+\section{Group Theory: Sylow's First Theorem}
+
+\begin{theorem}[sylow\_existence]
+Let $G$ be a finite group with $|G| = p^n m$, where $p$ is prime and $p$ does
+not divide $m$. Then $G$ has a subgroup of order $p^n$.
+\end{theorem}
+
+\begin{proof}
+By induction on $|G|$. If $G$ is abelian, use Cauchy's theorem repeatedly on
+the quotient by a central subgroup of order $p$. In general, if $p \mid |Z(G)|$,
+Cauchy's theorem gives a central subgroup $N$ of order $p$; by induction
+$G/N$ has a subgroup of order $p^{n-1}$, whose preimage in $G$ has order $p^n$.
+Otherwise $p \nmid |Z(G)|$, so by the class equation
+$|G| = |Z(G)| + \sum_i [G : C_G(x_i)]$ some conjugacy class term
+$[G : C_G(x_i)]$ is coprime to $p$, so $p^n \mid |C_G(x_i)|$ for a
+proper subgroup $C_G(x_i) \subsetneq G$; by induction $C_G(x_i)$ has a
+subgroup of order $p^n$, which is the desired subgroup of $G$.
+\end{proof}

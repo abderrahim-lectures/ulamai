@@ -1,0 +1,30 @@
+\section{Algebra: Wedderburn Structure Theorem}
+
+\begin{theorem}[wedderburn\_semisimple]
+Let $A$ be a finite-dimensional semisimple associative algebra over a field
+$k$. Then $A$ is isomorphic, as a $k$-algebra, to a finite product of matrix
+algebras over division rings:
+\[
+A \;\cong\; \prod_{i=1}^n M_{n_i}(D_i)
+\]
+for some $n \geq 0$, integers $n_i \geq 1$, and finite-dimensional division
+$k$-algebras $D_i$.
+\end{theorem}
+
+\begin{proof}
+Since $A$ is semisimple, viewing $A$ as a left module over itself, $A$
+decomposes as a direct sum of simple left ideals; grouping isomorphic
+summands, $A \cong \bigoplus_{i=1}^n S_i^{\oplus m_i}$ for pairwise
+non-isomorphic simple $A$-modules $S_i$. Let $D_i = \mathrm{End}_A(S_i)$;
+by Schur's lemma, since $S_i$ is simple, $D_i$ is a division ring. Because
+the $S_i$ are pairwise non-isomorphic, Schur's lemma also gives
+$\mathrm{Hom}_A(S_i, S_j) = 0$ for $i \neq j$, so
+\[
+A \cong \mathrm{End}_A(A)^{\mathrm{op}} \cong \mathrm{End}_A\Big(\bigoplus_i S_i^{\oplus m_i}\Big)^{\mathrm{op}}
+\cong \prod_i \mathrm{End}_A(S_i^{\oplus m_i})^{\mathrm{op}}
+\cong \prod_i M_{m_i}(D_i)^{\mathrm{op}}.
+\]
+Since $M_{m_i}(D_i)^{\mathrm{op}} \cong M_{m_i}(D_i^{\mathrm{op}})$ and
+$D_i^{\mathrm{op}}$ is again a division ring, setting $n_i = m_i$ gives the
+stated decomposition.
+\end{proof}

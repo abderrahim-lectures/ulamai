@@ -1,0 +1,21 @@
+\section{Category Theory: Yoneda Lemma}
+
+\begin{theorem}[yoneda]
+Let $\mathcal{C}$ be a locally small category and $F : \mathcal{C} \to \mathbf{Set}$
+a functor. For every object $A$ of $\mathcal{C}$, there is a natural bijection
+\[
+\mathrm{Nat}(\mathrm{Hom}_{\mathcal{C}}(A, -), F) \;\cong\; F(A),
+\]
+sending a natural transformation $\eta$ to $\eta_A(\mathrm{id}_A)$.
+\end{theorem}
+
+\begin{proof}
+Define $\Phi : \mathrm{Nat}(\mathrm{Hom}_{\mathcal{C}}(A,-), F) \to F(A)$ by
+$\Phi(\eta) = \eta_A(\mathrm{id}_A)$. Define $\Psi : F(A) \to \mathrm{Nat}(\mathrm{Hom}_{\mathcal{C}}(A,-), F)$
+by sending $x \in F(A)$ to the transformation whose component at $B$ sends
+$f : A \to B$ to $F(f)(x)$. Naturality of $\Psi(x)$ follows from
+functoriality of $F$. One checks $\Phi(\Psi(x)) = F(\mathrm{id}_A)(x) = x$ using
+$F(\mathrm{id}_A) = \mathrm{id}_{F(A)}$, and $\Psi(\Phi(\eta)) = \eta$ using
+naturality of $\eta$ applied to each $f : A \to B$. Hence $\Phi$ and $\Psi$ are
+mutually inverse bijections, natural in $A$ and $F$.
+\end{proof}

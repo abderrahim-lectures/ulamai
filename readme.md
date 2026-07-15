@@ -8,7 +8,7 @@ A **truth-first**, reproducible, open-source **Lean 4 theorem prover CLI** that 
 - **Search + caching** (best-first / beam + transposition table)
 
 Ulam AI is designed to plug into **Codex / Claude Code / Gemini CLI / Ollama** and produce **machine-checked Lean 4 proofs**.
-Start here: [UlamAI Prover Tutorial](examples/UlamAI_Prover_Tutorial.md).
+Start here: [UlamAI Prover Tutorial](docs/tutorial.md).
 
 ---
 
@@ -28,6 +28,17 @@ git clone https://github.com/ulamai/ulamai.git
 cd ulamai
 ./install.sh
 ```
+
+Without installing (standalone, using [uv](https://docs.astral.sh/uv/)):
+
+```bash
+git clone https://github.com/ulamai/ulamai.git
+cd ulamai
+uv venv .venv && uv pip install --python .venv/bin/python pantograph
+./ulam.sh --help   # or: ln -sf "$PWD/ulam.sh" ~/.local/bin/ulam
+```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for how the project fits together.
 
 In the folder where you want to prove or formalize things:
 
@@ -70,9 +81,10 @@ Lean backends:
 
 ---
 
-## Status (v0.2.11)
+## Status (v0.2.12)
 This repo now contains a **working benchmark-ready proving/formalization pipeline** with reproducible reporting and optional Lean LSP loops:
 
+- **v0.2.12 highlights:** internal cleanup pass — `ulam/llm/` adapters and `formalize/llm.py` now share one HTTP/CLI helper module instead of duplicating request/response-parsing code, `cli.py`'s ~40 config-resolution helpers were collapsed onto four generic primitives, and `ulam/lean/lsp_runner.py` now uses `lsp.py`'s public interface instead of its private internals. No behavior change (verified against a pristine clone: identical `--help` output and test results). Adds a standalone `ulam.sh` launcher for running without `pip install`, and [ARCHITECTURE.md](ARCHITECTURE.md) documenting how the pieces fit together.
 - **v0.2.11 highlights:** informal natural-language `tex` proving now starts with one deep whole-theorem attempt using a single primary model, and only falls back to planner/worker claim decomposition if that first full proof draft fails verification. The natural-language TUI keeps the simpler TeX launch flow with no inline LLM/provider settings there, defaults launch-time TeX proving to `workers: one` with `worker_drafts: 1` and `concurrency: off`, and only reveals the advanced multi-worker controls after choosing `workers: multi`.
 - **Autop tactics** (aesop/simp/linarith/ring) as fallback during proof search
 - **Axiom toggle** (axioms/constants allowed by default; disable with `--no-allow-axioms`)
@@ -151,26 +163,26 @@ ulam formalize path/to/paper.tex --out path/to/paper.lean
 Toy example:
 
 ```bash
-ulam formalize examples/Formalize.tex --out examples/Formalize.lean
+ulam formalize examples/formalize/identity_toy.tex --out examples/formalize/identity_toy.lean
 ```
 
 Tutorial with runnable examples:
 
-- Markdown guide: `examples/UlamAI_Prover_Tutorial.md`
-- Colab notebook: `examples/UlamAI_Prover_Tutorial.ipynb`
-- Colab open link (main branch): `https://colab.research.google.com/github/ulamai/ulamai/blob/main/examples/UlamAI_Prover_Tutorial.ipynb`
-- Includes both olympiad inputs: statement-only (`FormalizePolishOlympiad.tex`) and full-proof (`pol25.tex`).
+- Markdown guide: `docs/tutorial.md`
+- Colab notebook: `docs/tutorial.ipynb`
+- Colab open link (main branch): `https://colab.research.google.com/github/ulamai/ulamai/blob/main/docs/tutorial.ipynb`
+- Includes both olympiad inputs: statement-only (`formalize/polish_olympiad_statement.tex`) and full-proof (`formalize/polish_olympiad_proof.tex`).
 
 Olympiad-style formalization example:
 
 ```bash
-ulam formalize examples/FormalizePolishOlympiad.tex --out examples/FormalizePolishOlympiad.lean
+ulam formalize examples/formalize/polish_olympiad_statement.tex --out examples/formalize/polish_olympiad_statement.lean
 ```
 
 Same olympiad theorem with full informal proof (recommended):
 
 ```bash
-ulam formalize examples/pol25.tex --out examples/pol25.lean
+ulam formalize examples/formalize/polish_olympiad_proof.tex --out examples/formalize/polish_olympiad_proof.lean
 ```
 
 Formalization options:
@@ -206,13 +218,13 @@ Maintainers: the Homebrew tap is auto-updated on release. See `.github/workflows
 Mock mode lets you smoke-test the CLI without Lean installed:
 
 ```bash
-python3 -m ulam prove examples/Smoke.lean --theorem irrational_sqrt_two_smoke
+python3 -m ulam prove examples/prove/smoke.lean --theorem irrational_sqrt_two_smoke
 ```
 
 Natural language guidance:
 
 ```bash
-python3 -m ulam prove examples/Smoke.lean --theorem irrational_sqrt_two_smoke --instruction "Use a short automation tactic first."
+python3 -m ulam prove examples/prove/smoke.lean --theorem irrational_sqrt_two_smoke --instruction "Use a short automation tactic first."
 ```
 
 Run TeX proving with replan/backtrack and artifacts:
@@ -229,7 +241,7 @@ python3 -m ulam prove --theorem infinitely_many_primes --output-format tex \
 Statement source used in that command:
 
 ```text
-examples/ProveTexPrimes.txt
+examples/prove/infinite_primes.txt
 ```
 
 Resume a prior TeX proving run:
@@ -243,13 +255,13 @@ python3 -m ulam prove --theorem infinitely_many_primes --output-format tex \
 Verbose logs (LLM suggestions + tactic outcomes):
 
 ```bash
-python3 -m ulam prove examples/Smoke.lean --theorem irrational_sqrt_two_smoke --verbose
+python3 -m ulam prove examples/prove/smoke.lean --theorem irrational_sqrt_two_smoke --verbose
 ```
 
 Attach context files:
 
 ```bash
-python3 -m ulam prove examples/Smoke.lean --theorem irrational_sqrt_two_smoke --context examples/Smoke.lean
+python3 -m ulam prove examples/prove/smoke.lean --theorem irrational_sqrt_two_smoke --context examples/prove/smoke.lean
 ```
 
 Replay the run:
@@ -261,13 +273,13 @@ python3 -m ulam replay run.jsonl
 Read-only checkpoint (typecheck/placeholders/axiom drift):
 
 ```bash
-python3 -m ulam checkpoint examples/Smoke.lean --theorem irrational_sqrt_two_smoke --strict
+python3 -m ulam checkpoint examples/prove/smoke.lean --theorem irrational_sqrt_two_smoke --strict
 ```
 
 Run review with next-step suggestions:
 
 ```bash
-python3 -m ulam review --trace run.jsonl --file examples/Smoke.lean --theorem irrational_sqrt_two_smoke
+python3 -m ulam review --trace run.jsonl --file examples/prove/smoke.lean --theorem irrational_sqrt_two_smoke
 ```
 
 Execute deterministic replay (re-run every tactic from the trace):

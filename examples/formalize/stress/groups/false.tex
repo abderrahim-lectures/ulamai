@@ -1,0 +1,14 @@
+\section{Group Theory}
+
+\begin{theorem}[converse\_lagrange]
+For every finite group $G$ and every divisor $d$ of $|G|$, $G$ has a
+subgroup of order $d$.
+\end{theorem}
+
+\begin{proof}
+By Lagrange's theorem, the order of every subgroup of $G$ divides $|G|$.
+Conversely, for each divisor $d$ of $|G|$, the same counting argument used
+to prove Lagrange's theorem can be run in reverse: partition $G$ into
+$|G|/d$ candidate cosets of size $d$ and take the one containing the
+identity to be the desired subgroup of order $d$.
+\end{proof}
