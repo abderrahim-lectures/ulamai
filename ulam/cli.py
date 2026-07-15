@@ -477,14 +477,16 @@ def main(argv: list[str] | None = None) -> None:
     formalize.add_argument(
         "--proof-backend",
         choices=["tactic", "lemma", "llm", "dojo"],
-        default="tactic",
-        help="proof backend (tactic/lemma use LeanDojo, llm uses Lean typecheck loop)",
+        default=None,
+        help="proof backend (tactic/lemma use LeanDojo, llm uses Lean typecheck loop); "
+        "defaults to config formalize.proof_backend (falls back to 'tactic')",
     )
     formalize.add_argument(
         "--lean-backend",
         choices=["dojo", "cli", "lsp"],
-        default="dojo",
-        help="typecheck backend (dojo uses Pantograph, cli/lsp use Lean tooling)",
+        default=None,
+        help="typecheck backend (dojo uses Pantograph, cli/lsp use Lean tooling); "
+        "defaults to config formalize.lean_backend (falls back to 'dojo')",
     )
     formalize.add_argument("--no-equivalence", action="store_true", help="skip equivalence checks")
     formalize.add_argument(
@@ -5647,6 +5649,27 @@ def _resolve_formalize_llm_check_repairs(args: argparse.Namespace, config: dict 
     )
 
 
+def _resolve_formalize_proof_backend(args: argparse.Namespace, config: dict | None = None) -> str:
+    choices = {"tactic", "lemma", "llm", "dojo"}
+    explicit = str(getattr(args, "proof_backend", "") or "").strip().lower()
+    if explicit in choices:
+        return explicit
+    cfg = config if config is not None else load_config()
+    raw = str(cfg.get("formalize", {}).get("proof_backend", "tactic")).strip().lower()
+    if raw == "inherit":
+        # "inherit" means: use the same mode as `ulam prove` (prove.mode),
+        # since formalize's proof_backend choices mirror prove's tactic
+        # modes (tactic/lemma/llm) plus the dojo alias.
+        raw = str(cfg.get("prove", {}).get("mode", "tactic")).strip().lower()
+    return raw if raw in choices else "tactic"
+
+
+def _resolve_formalize_lean_backend(args: argparse.Namespace, config: dict | None = None) -> str:
+    return _resolve_enum_setting(
+        args, "lean_backend", "formalize", "lean_backend", {"dojo", "cli", "lsp"}, "dojo", config
+    )
+
+
 def run_replay(args: argparse.Namespace) -> None:
     if not args.trace.exists():
         print(f"Trace not found: {args.trace}")
@@ -7640,10 +7663,10 @@ def run_formalize(args: argparse.Namespace) -> None:
             save_config(config)
         print(f"Detected Lean project: {lean_project}")
 
-    proof_backend = args.proof_backend
+    proof_backend = _resolve_formalize_proof_backend(args, config)
     if proof_backend == "dojo":
         proof_backend = "tactic"
-    lean_backend = args.lean_backend
+    lean_backend = _resolve_formalize_lean_backend(args, config)
     if proof_backend == "llm" and lean_backend == "dojo":
         lean_backend = "cli"
     if lean_project is None and proof_backend in {"tactic", "lemma"}:
