@@ -34,7 +34,7 @@ Without installing (standalone, using [uv](https://docs.astral.sh/uv/)):
 ```bash
 git clone https://github.com/ulamai/ulamai.git
 cd ulamai
-uv venv .venv && uv pip install --python .venv/bin/python -e . pantograph
+uv venv .venv && uv pip install --python .venv/bin/python -e . lean-dojo-v2 "git+https://github.com/stanford-centaur/PyPantograph"
 ./ulam.sh --help   # or: ln -sf "$PWD/ulam.sh" ~/.local/bin/ulam
 ```
 
