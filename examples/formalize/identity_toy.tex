@@ -1,0 +1,12 @@
+\section{Toy Example}
+
+\begin{theorem}[add\_comm\_toy]
+For all natural numbers $m$ and $n$, $m + n = n + m$.
+\end{theorem}
+
+\begin{proof}
+By induction on $n$. The base case $n = 0$ reduces to $m + 0 = 0 + m$, which
+holds since $m + 0 = m$ and $0 + m = m$. For the inductive step, assume
+$m + n = n + m$; then $m + (n+1) = (m+n) + 1 = (n+m) + 1 = (n+1) + m$, using
+associativity and the inductive hypothesis.
+\end{proof}

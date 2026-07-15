@@ -8,11 +8,11 @@ If you only follow one file, follow this one.
 
 1. Install UlamAI.
 2. Install Lean tooling (`ulam -lean` / `ulam lean-setup`).
-3. Run a small verify/prove check on Lean (`Smoke.lean`).
+3. Run a small verify/prove check on Lean (`prove/smoke.lean`).
 4. Run informal proving to `.tex` for: "There are infinitely many prime numbers."
 5. Formalize the Polish olympiad theorem from two inputs:
    - statement-only input
-   - full informal proof input (`pol25.tex`, recommended)
+   - full informal proof input (`formalize/polish_olympiad_proof.tex`, recommended)
 6. Learn the same flows in Terminal UI (what to click and what each step does).
 
 ## 0) Install UlamAI
@@ -100,7 +100,7 @@ Why this is recommended:
 
 ### Problem used
 
-The example theorem in `examples/Smoke.lean` is:
+The example theorem in `examples/prove/smoke.lean` is:
 
 ```lean
 theorem irrational_sqrt_two_smoke : Irrational (Real.sqrt 2) := by
@@ -110,7 +110,7 @@ theorem irrational_sqrt_two_smoke : Irrational (Real.sqrt 2) := by
 ### CLI run
 
 ```bash
-python3 -m ulam prove examples/Smoke.lean \
+python3 -m ulam prove examples/prove/smoke.lean \
   --theorem irrational_sqrt_two_smoke \
   --prove-mode llm \
   --lean lsp \
@@ -128,7 +128,7 @@ What this does:
 1. Run `ulam`.
 2. Click `2. Prove with natural language guidance`.
 3. At `Enter guidance for the prover`, write optional guidance (or leave minimal).
-4. At `Lean file path (optional)`, enter `examples/Smoke.lean`.
+4. At `Lean file path (optional)`, enter `examples/prove/smoke.lean`.
 5. At `Output format (lean|tex)`, choose `lean`.
 6. At `Proof mode (tactic|lemma|llm)`, choose `llm`.
 7. At `Theorem name`, enter `irrational_sqrt_two_smoke`.
@@ -146,7 +146,7 @@ The prime-number statement is a clean example because most users already know th
 
 ### Input statement (exact)
 
-File: `examples/ProveTexPrimes.txt`
+File: `examples/prove/infinite_primes.txt`
 
 ```text
 Prove that there are infinitely many prime numbers.
@@ -158,7 +158,7 @@ Prove that there are infinitely many prime numbers.
 python3 -m ulam prove \
   --theorem infinitely_many_primes \
   --output-format tex \
-  --statement "$(cat examples/ProveTexPrimes.txt)" \
+  --statement "$(cat examples/prove/infinite_primes.txt)" \
   --llm codex_cli \
   --tex-rounds 3 \
   --tex-worker-drafts 2 \
@@ -179,7 +179,7 @@ Resume command:
 python3 -m ulam prove \
   --theorem infinitely_many_primes \
   --output-format tex \
-  --statement "$(cat examples/ProveTexPrimes.txt)" \
+  --statement "$(cat examples/prove/infinite_primes.txt)" \
   --llm codex_cli \
   --tex-resume runs/prove_tex/<run_dir>
 ```
@@ -204,13 +204,13 @@ What this route is for:
 
 In this workflow, we convert natural-language math into Lean declarations and proof attempts. The goal is to measure how well Ulam can map informal mathematical reasoning into machine-checkable structure, with iterative repair when the first draft is incomplete.
 
-We use two inputs for the same theorem on purpose: a short statement-only version and a full informal-proof version. This lets you see the practical difference between \"minimum context\" formalization and \"rich context\" formalization, and why the richer `pol25.tex` input is usually a stronger starting point.
+We use two inputs for the same theorem on purpose: a short statement-only version and a full informal-proof version. This lets you see the practical difference between \"minimum context\" formalization and \"rich context\" formalization, and why the richer `formalize/polish_olympiad_proof.tex` input is usually a stronger starting point.
 
 You now have two files for the same theorem.
 
 ### Statement-only input
 
-File: `examples/FormalizePolishOlympiad.tex`
+File: `examples/formalize/polish_olympiad_statement.tex`
 
 Problem statement:
 
@@ -219,8 +219,8 @@ Problem statement:
 CLI run:
 
 ```bash
-python3 -m ulam formalize examples/FormalizePolishOlympiad.tex \
-  --out examples/FormalizePolishOlympiad.lean \
+python3 -m ulam formalize examples/formalize/polish_olympiad_statement.tex \
+  --out examples/formalize/polish_olympiad_statement.lean \
   --proof-backend llm \
   --lean-backend dojo \
   --max-rounds 3 \
@@ -230,15 +230,15 @@ python3 -m ulam formalize examples/FormalizePolishOlympiad.tex \
 
 ### Full informal proof input (recommended)
 
-File: `examples/pol25.tex`
+File: `examples/formalize/polish_olympiad_proof.tex`
 
 This is the same theorem, but with a full informal proof narrative.
 
 CLI run:
 
 ```bash
-python3 -m ulam formalize examples/pol25.tex \
-  --out examples/pol25.lean \
+python3 -m ulam formalize examples/formalize/polish_olympiad_proof.tex \
+  --out examples/formalize/polish_olympiad_proof.lean \
   --proof-backend llm \
   --lean-backend dojo \
   --max-rounds 5 \
@@ -246,7 +246,7 @@ python3 -m ulam formalize examples/pol25.tex \
   --artifacts-dir runs/formalize_olympiad_full
 ```
 
-Why `pol25.tex` is better:
+Why `formalize/polish_olympiad_proof.tex` is better:
 - more proof structure,
 - more intermediate reasoning for the model to map into Lean declarations,
 - typically better starting point than statement-only formalization.
@@ -256,8 +256,8 @@ Why `pol25.tex` is better:
 1. Run `ulam`.
 2. Click `3. Formalize .tex to Lean`.
 3. At `.tex path`, enter one of:
-   - `examples/FormalizePolishOlympiad.tex` (statement-only), or
-   - `examples/pol25.tex` (full proof, recommended).
+   - `examples/formalize/polish_olympiad_statement.tex` (statement-only), or
+   - `examples/formalize/polish_olympiad_proof.tex` (full proof, recommended).
 4. At `Output .lean path`, use suggested or set explicit path.
 5. Run.
 
@@ -290,10 +290,10 @@ Go to `5. Settings` and set:
 ## 8) Colab Version
 
 Notebook path:
-- `examples/UlamAI_Prover_Tutorial.ipynb`
+- `docs/tutorial.ipynb`
 
 Direct Colab URL pattern:
 
 ```text
-https://colab.research.google.com/github/ulamai/ulamai/blob/main/examples/UlamAI_Prover_Tutorial.ipynb
+https://colab.research.google.com/github/ulamai/ulamai/blob/main/docs/tutorial.ipynb
 ```

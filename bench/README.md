@@ -19,7 +19,7 @@ Optional fields:
 Example:
 
 ```json
-{"file":"../../examples/Smoke.lean","theorem":"irrational_sqrt_two_smoke"}
+{"file":"../../examples/prove/smoke.lean","theorem":"irrational_sqrt_two_smoke"}
 ```
 
 ## Validation

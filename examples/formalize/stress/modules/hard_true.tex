@@ -1,0 +1,31 @@
+\section{Module Theory: Structure Theorem for Finitely Generated Modules over a PID}
+
+\begin{theorem}[fg\_module\_structure]
+Let $R$ be a principal ideal domain and $M$ a finitely generated
+$R$-module. Then
+\[
+M \;\cong\; R^r \oplus R/(d_1) \oplus R/(d_2) \oplus \cdots \oplus R/(d_k)
+\]
+for some $r \geq 0$ and nonzero nonunits $d_1 \mid d_2 \mid \cdots \mid d_k$
+in $R$, unique up to associates.
+\end{theorem}
+
+\begin{proof}
+Present $M$ as $R^n / N$ for some submodule $N \leq R^n$, via a surjection
+$R^n \twoheadrightarrow M$ from a finite generating set (finitely generated)
+with kernel $N$. Since $R$ is a PID, $N$ is itself a free submodule of
+$R^n$ of some rank $m \leq n$ (a submodule of a free module over a PID is
+free). Choose bases of $R^n$ and $N$ so that the inclusion $N \hookrightarrow R^n$
+is given by a diagonal matrix with entries $d_1 \mid d_2 \mid \cdots \mid d_m$
+(the Smith normal form of the presentation matrix, obtained via elementary
+row/column operations corresponding to change of basis on $R^n$ and $N$).
+Then
+\[
+M = R^n / N \cong \bigoplus_{i=1}^m R/(d_i) \oplus R^{n-m},
+\]
+which is the stated decomposition with $r = n - m$, after discarding any
+$d_i$ that are units (giving a zero summand). Uniqueness of the $d_i$ up to
+associates follows from the invariance of the Smith normal form, which can
+be characterized invariantly via the invariant factors
+$\gcd$ of $i \times i$ minors of the presentation matrix.
+\end{proof}
