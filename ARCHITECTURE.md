@@ -90,8 +90,10 @@ All backends implement `LeanRunner` ([base.py](ulam/lean/base.py)):
 `start()` / `apply(tactic)` / `close()`.
 
 - `dojo.py` — LeanDojo/Pantograph: stateful tactic execution with real goal
-  tracking. Requires the `pantograph` package (the one third-party
-  dependency this project has).
+  tracking. Requires `lean-dojo-v2` and `PyPantograph`
+  (`git+https://github.com/stanford-centaur/PyPantograph`) — note this is
+  *not* the unrelated `pantograph` package on PyPI, which is a Jupyter
+  drawing-widget library that happens to share the name.
 - `lsp.py` — talks to the Lean language server (`lake serve` /
   `lean --server`) for diagnostics; owns the LSP client/protocol plumbing
   (`LSPClient`, `MessageReader`, `format_diagnostics`, `lean_lsp_cmd`,

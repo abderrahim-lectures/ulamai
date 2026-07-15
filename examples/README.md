@@ -5,6 +5,31 @@ organized by the subcommand that consumes them. For the full tutorial, see
 [`../docs/tutorial.md`](../docs/tutorial.md) (or the Colab notebook
 [`../docs/tutorial.ipynb`](../docs/tutorial.ipynb)).
 
+## This folder is itself a Lean project
+
+`examples/` is a Mathlib-backed Lake project (`lakefile.toml`,
+`lean-toolchain`, `lake-manifest.json`) — `formalize/` and `prove/` are
+wired in as `lean_lib` targets, so any `.lean` file under them is part of
+the buildable/typecheckable source tree (`lake build formalize prove`).
+
+The toolchain is pinned to `v4.29.1`, not Mathlib's newest default —
+that's PyPantograph's actual latest supported Lean version (checked
+against its upstream repo); a newer toolchain would make the `dojo`
+backend's `Server` fail to start. Use `--lean-project examples` (or set
+`lean.project` in `.ulam/config.json`) to point `ulam prove`/`formalize`
+at it.
+
+Setting it up from scratch (`.lake/` itself is gitignored — only the
+manifest/lockfiles are committed):
+
+```bash
+cd examples
+lake exe cache get   # or: lake build (compiles from source if no cache is available)
+```
+
+To avoid re-downloading/recompiling Mathlib for every new project on this
+toolchain, see `../scripts/link_shared_mathlib_cache.sh`.
+
 ## Start Here
 
 1. Read [`../docs/tutorial.md`](../docs/tutorial.md) (full guide).
