@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 from . import __version__
-from .cli import run_prove
+from .cli import _normalize_proof_profile, run_prove
 from .auth import (
     codex_auth_path,
     gemini_oauth_creds_path,
@@ -1065,15 +1065,6 @@ def _reset_prover_settings(config: dict) -> None:
     formalize["llm_check_timing"] = timing
     formalize["llm_check_repairs"] = int(formalize_defaults.get("llm_check_repairs", 2))
     _apply_proof_profile_config(config, policy["proof_profile"])
-
-
-def _normalize_proof_profile(value: object) -> str:
-    raw = str(value or "").strip().lower()
-    if raw in {"", "normal", "balanced", "default"}:
-        return "balanced"
-    if raw in {"fast", "strict"}:
-        return raw
-    return "balanced"
 
 
 def _apply_proof_profile_config(config: dict, profile: str) -> None:

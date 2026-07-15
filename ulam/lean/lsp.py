@@ -10,6 +10,18 @@ from pathlib import Path
 from shutil import which
 from typing import Any
 
+__all__ = [
+    "lean_lsp_check",
+    "lean_lsp_diagnostics",
+    "format_diagnostics",
+    "lean_lsp_cmd",
+    "LSPClient",
+    "MessageReader",
+    "normalize_diagnostic",
+    "read_stderr",
+    "terminate_process",
+]
+
 
 def lean_lsp_check(
     file_path: Path,
@@ -342,3 +354,14 @@ def _raise_lsp_error(method: str, payload: Any) -> None:
         if message:
             raise RuntimeError(f"Lean LSP {method} failed ({code}): {message}")
     raise RuntimeError(f"Lean LSP {method} failed.")
+
+
+# Public surface for other Lean backend adapters (e.g. lsp_runner.py) that
+# need to reuse the LSP client/protocol plumbing instead of reimplementing it.
+format_diagnostics = _format_diagnostics
+lean_lsp_cmd = _lean_lsp_cmd
+LSPClient = _LSPClient
+MessageReader = _MessageReader
+normalize_diagnostic = _normalize_diagnostic
+read_stderr = _read_stderr
+terminate_process = _terminate_process

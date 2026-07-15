@@ -11,13 +11,13 @@ from typing import Any
 
 from .base import LeanRunner
 from .lsp import (
-    _format_diagnostics,
-    _lean_lsp_cmd,
-    _LSPClient,
-    _MessageReader,
-    _normalize_diagnostic,
-    _read_stderr,
-    _terminate_process,
+    LSPClient,
+    MessageReader,
+    format_diagnostics,
+    lean_lsp_cmd,
+    normalize_diagnostic,
+    read_stderr,
+    terminate_process,
 )
 from ..types import ProofState, TacticResult
 
@@ -57,8 +57,8 @@ class _LeanLspSession:
         self._root_name = root.name or "root"
 
         self._proc: subprocess.Popen | None = None
-        self._reader: _MessageReader | None = None
-        self._client: _LSPClient | None = None
+        self._reader: MessageReader | None = None
+        self._client: LSPClient | None = None
         self._stderr_lines: list[str] = []
         self._stderr_thread: threading.Thread | None = None
         self._opened = False
@@ -151,7 +151,7 @@ class _LeanLspSession:
             except Exception:
                 pass
         if self._proc is not None:
-            _terminate_process(self._proc)
+            terminate_process(self._proc)
         self._proc = None
         self._reader = None
         self._client = None
@@ -172,13 +172,13 @@ class _LeanLspSession:
             timeout_s=timeout_val,
             version=self._version,
         )
-        normalized = [_normalize_diagnostic(item) for item in rows if isinstance(item, dict)]
+        normalized = [normalize_diagnostic(item) for item in rows if isinstance(item, dict)]
         return [item for item in normalized if item is not None]
 
     def _ensure_started(self) -> None:
         if self._client is not None:
             return
-        cmd = _lean_lsp_cmd()
+        cmd = lean_lsp_cmd()
         if cmd is None:
             raise RuntimeError(
                 "Lean LSP server not found. Install Lean and ensure `lean` or `lake` is on PATH."
@@ -197,17 +197,17 @@ class _LeanLspSession:
         except Exception as exc:
             raise RuntimeError(f"Failed to start Lean LSP server: {exc}") from exc
         if proc.stdin is None or proc.stdout is None or proc.stderr is None:
-            _terminate_process(proc)
+            terminate_process(proc)
             raise RuntimeError("Failed to start Lean LSP server (missing stdio pipes).")
-        reader = _MessageReader(proc.stdout)
+        reader = MessageReader(proc.stdout)
         reader.start()
         stderr_thread = threading.Thread(
-            target=_read_stderr,
+            target=read_stderr,
             args=(proc.stderr, self._stderr_lines),
             daemon=True,
         )
         stderr_thread.start()
-        client = _LSPClient(proc.stdin, reader)
+        client = LSPClient(proc.stdin, reader)
         timeout_val = min(15.0, self._timeout_s)
         client.request(
             "initialize",
@@ -267,7 +267,7 @@ class LeanLspRunner(LeanRunner):
             diagnostics = session.open_text(guard_text, timeout_s=self._timeout_s)
             errors = _error_diagnostics(diagnostics)
             if errors:
-                raise RuntimeError(_format_diagnostics(errors))
+                raise RuntimeError(format_diagnostics(errors))
             goal_pretty = session.plain_goal(
                 line=probe_line,
                 col=probe_col,
@@ -366,7 +366,7 @@ class LeanLspRunner(LeanRunner):
             result = _ScriptEval(
                 ok=False,
                 solved=False,
-                error=_format_diagnostics(guard_errors),
+                error=format_diagnostics(guard_errors),
             )
             self._eval_cache[key] = result
             return result
@@ -398,7 +398,7 @@ class LeanLspRunner(LeanRunner):
         result = _ScriptEval(
             ok=False,
             solved=False,
-            error=_format_diagnostics(strict_errors),
+            error=format_diagnostics(strict_errors),
         )
         self._eval_cache[key] = result
         return result

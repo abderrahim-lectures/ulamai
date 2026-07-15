@@ -5,6 +5,7 @@ import urllib.request
 from typing import Iterable
 
 from .base import LLMClient
+from .http import extract_openai_content, urlopen_read
 from .prompt import build_prompt, parse_tactics
 from .runtime import run_with_runtime_controls
 from ..types import ProofState
@@ -60,11 +61,13 @@ class GeminiClient(LLMClient):
             },
         )
         raw = run_with_runtime_controls(
-            lambda: _urlopen_read(req, self._timeout_s),
+            lambda: urlopen_read(req, self._timeout_s),
             timeout_s=self._timeout_s,
             heartbeat_s=self._heartbeat_s,
         )
-        content = _extract_content(raw)
+        content = extract_openai_content(raw)
+        if not content:
+            raise RuntimeError("Gemini response missing content")
         return parse_tactics(content, k)
 
 
@@ -75,22 +78,3 @@ def _chat_endpoint(base_url: str) -> str:
     if base.endswith("/openai") or base.endswith("/openai/v1") or base.endswith("/v1"):
         return f"{base}/chat/completions"
     return f"{base}/v1/chat/completions"
-
-
-def _extract_content(raw: str) -> str:
-    data = json.loads(raw)
-    choices = data.get("choices") or []
-    if not choices:
-        raise RuntimeError("Gemini response missing choices")
-    msg = choices[0]
-    if "message" in msg and "content" in msg["message"]:
-        return msg["message"]["content"]
-    if "text" in msg:
-        return msg["text"]
-    raise RuntimeError("Gemini response missing content")
-
-
-def _urlopen_read(req: urllib.request.Request, timeout_s: float | None) -> str:
-    timeout = timeout_s if timeout_s and timeout_s > 0 else None
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read().decode("utf-8")

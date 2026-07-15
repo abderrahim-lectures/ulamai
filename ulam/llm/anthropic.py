@@ -5,6 +5,7 @@ import urllib.request
 from typing import Iterable
 
 from .base import LLMClient
+from .http import extract_anthropic_content, urlopen_read
 from .prompt import build_prompt, parse_tactics
 from .runtime import run_with_runtime_controls
 from ..types import ProofState
@@ -63,30 +64,11 @@ class AnthropicClient(LLMClient):
             },
         )
         raw = run_with_runtime_controls(
-            lambda: _urlopen_read(req, self._timeout_s),
+            lambda: urlopen_read(req, self._timeout_s),
             timeout_s=self._timeout_s,
             heartbeat_s=self._heartbeat_s,
         )
-        content = _extract_content(raw)
+        content = extract_anthropic_content(raw)
+        if not content:
+            raise RuntimeError("Anthropic response missing content")
         return parse_tactics(content, k)
-
-
-def _extract_content(raw: str) -> str:
-    data = json.loads(raw)
-    content = data.get("content")
-    if isinstance(content, list):
-        parts = []
-        for item in content:
-            if isinstance(item, dict) and item.get("type") == "text":
-                parts.append(item.get("text", ""))
-        if parts:
-            return "\n".join(parts)
-    if "text" in data and isinstance(data["text"], str):
-        return data["text"]
-    raise RuntimeError("Anthropic response missing content")
-
-
-def _urlopen_read(req: urllib.request.Request, timeout_s: float | None) -> str:
-    timeout = timeout_s if timeout_s and timeout_s > 0 else None
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read().decode("utf-8")
