@@ -1435,7 +1435,9 @@ def _normalize_imports(text: str) -> str:
         seen.add(mod)
         deduped.append(mod)
 
-    import_block = "import " + " ".join(deduped)
+    # Lean 4 requires one `import <module>` statement per line -- it does
+    # NOT support space-separated multi-module imports on a single line.
+    import_block = "\n".join(f"import {mod}" for mod in deduped)
 
     header: list[str] = []
     rest: list[str] = []

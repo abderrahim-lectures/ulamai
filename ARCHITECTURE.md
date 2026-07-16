@@ -70,9 +70,13 @@ raw prompt string — every adapter builds its own request payload but shares:
   `$PATH`) and are shared by every adapter below **and** by
   `formalize/llm.py`, so there's exactly one implementation of each, not one
   per call site.
-- API-key backends: `openai_compat.py`, `anthropic.py`, `gemini.py`,
-  `ollama.py` — build a provider-specific payload/endpoint, call
-  `http.urlopen_read`, parse with the matching `http.extract_*_content`.
+- API-key backends: `openai_compat.py`, `anthropic.py`, `ollama.py` — build
+  a provider-specific payload/endpoint, call `http.urlopen_read`, parse
+  with the matching `http.extract_*_content`. `gemini.py` is the exception:
+  it calls the official `google-genai` SDK (`gemini_client.py`, with
+  retry/backoff on transient server errors) rather than raw HTTP, since the
+  OpenAI-compat shim gave no retry protection against Gemini's occasional
+  `503` "high demand" responses.
 - Subscription-CLI backends: `cli_codex.py`, `cli_claude.py`,
   `cli_gemini.py` — shell out to `codex`/`claude`/`gemini` via
   [cli_utils.py](ulam/llm/cli_utils.py); `_ensure_cmd` replaced with
